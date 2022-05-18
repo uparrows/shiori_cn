@@ -1,4 +1,4 @@
-name: Docker_Image_shiori
+name: Docker_Image_shiori_cn
 
 on:
   push:
@@ -7,8 +7,9 @@ on:
     branches: [ main ]
 
 env:
-  APP_NAME:shiori_cn
+  APP_NAME: shiori_cn
   DOCKERHUB_REPO: dezhao/shiori_cn
+
 jobs:
   main:
     # 在 Ubuntu 上运行
