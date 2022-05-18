@@ -27,6 +27,11 @@ Shiori 是一个用 Go 语言编写的简单书签管理器。 旨在作为 [Poc
 
 ![3](https://user-images.githubusercontent.com/38988286/169092022-62ad0e3a-4c6d-46ad-92ee-799fc6e5b5d7.jpg)
 
+摘取网页并保存到服务器或nas，随时可以访问本地网页存档：
+
+
+![1](https://user-images.githubusercontent.com/38988286/169100846-d182bfef-a3a6-4f13-b412-d86c5a144261.png)
+
 
 
 ## 功能
