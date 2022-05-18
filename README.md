@@ -4,7 +4,7 @@ DO NOT UPLOADED TO CSDN
 本仓库是go-shiori/shiori的分支，我所做的只是将其汉化为中文版。
 请勿上传到csdn。
 
-
+教程详见：https://yuanfangblog.xyz/technology/601.html
 
 
 
@@ -20,8 +20,14 @@ DO NOT UPLOADED TO CSDN
 
 Shiori 是一个用 Go 语言编写的简单书签管理器。 旨在作为 [Pocket][pocket] 的简单克隆。 您可以将其用作命令行应用程序或 Web 应用程序。 此应用程序作为单个二进制文件分发，这意味着它可以轻松安装和使用。
 
+![1](https://user-images.githubusercontent.com/38988286/169091978-da3b42d4-283d-4ae0-87ca-025910e90144.jpg)
 
-![Screenshot][screenshot]
+
+![2](https://user-images.githubusercontent.com/38988286/169091998-1bbc7c19-7795-42e3-b5bd-90813b782dd8.jpg)
+
+![3](https://user-images.githubusercontent.com/38988286/169092022-62ad0e3a-4c6d-46ad-92ee-799fc6e5b5d7.jpg)
+
+
 
 ## 功能
 
