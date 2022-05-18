@@ -6,7 +6,9 @@ DO NOT UPLOADED TO CSDN
 
 教程详见：https://yuanfangblog.xyz/technology/601.html
 
+浏览器插件：https://github.com/uparrows/shiori_cn/releases/download/1.5.2/shiori_extension_chrome.crx.zip
 
+下载后解压，使用chrome或edge开发者模式加载即可。
 
 
 # Shiori
