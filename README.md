@@ -14,7 +14,7 @@ DO NOT UPLOADED TO CSDN
 [![IC](https://github.com/go-shiori/shiori/actions/workflows/push.yml/badge.svg?branch=master)](https://github.com/go-shiori/shiori/actions/workflows/push.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-shiori/shiori)](https://goreportcard.com/report/github.com/go-shiori/shiori)
 [![#shiori@libera.chat](https://img.shields.io/badge/irc-%23shiori-orange)](https://web.libera.chat/#shiori)
-[![Containers](https://img.shields.io/static/v1?label=Container&message=Images&color=1488C6&logo=docker)](https://github.com/go-shiori/shiori/pkgs/container/shiori)
+[<img src="https://img.shields.io/docker/pulls/dezhao/shiori_cn.svg">](https://hub.docker.com/r/dezhao/shiori_cn)
 
 **查看我们最新的[公告](https://github.com/go-shiori/shiori/discussions/categories/announcements)**
 
