@@ -10,6 +10,8 @@ DO NOT UPLOADED TO CSDN
 
 下载后解压，使用chrome或edge开发者模式加载即可。
 
+初次使用命令 shiori import批量导入chrome、firefox备份的书签之前需要先运行shiori migrate创建数据库
+
 
 # Shiori
 
