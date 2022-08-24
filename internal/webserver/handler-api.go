@@ -25,7 +25,7 @@ import (
 func downloadBookmarkContent(book *model.Bookmark, dataDir string, request *http.Request) (*model.Bookmark, error) {
 	content, contentType, err := core.DownloadBookmark(book.URL)
 	if err != nil {
-		return nil, fmt.Errorf("error downloading bookmark: %s", err)
+		return nil, fmt.Errorf("下载书签时出错: %s", err)
 	}
 
 	processRequest := core.ProcessRequest{
@@ -39,7 +39,7 @@ func downloadBookmarkContent(book *model.Bookmark, dataDir string, request *http
 	content.Close()
 
 	if err != nil && isFatalErr {
-		panic(fmt.Errorf("failed to process bookmark: %v", err))
+		panic(fmt.Errorf("处理书签失败: %v", err))
 	}
 
 	return &result, err
@@ -109,18 +109,18 @@ func (h *handler) apiLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 	// Get account data from database
 	account, exist := h.DB.GetAccount(request.Username)
 	if !exist {
-		panic(fmt.Errorf("username doesn't exist"))
+		panic(fmt.Errorf("用户名不存在"))
 	}
 
 	// Compare password with database
 	err = bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.Password))
 	if err != nil {
-		panic(fmt.Errorf("username and password don't match"))
+		panic(fmt.Errorf("用户名和密码不匹配"))
 	}
 
 	// If login request is as owner, make sure this account is owner
 	if request.Owner && !account.Owner {
-		panic(fmt.Errorf("account level is not sufficient as owner"))
+		panic(fmt.Errorf("账户级别不足以作为管理员"))
 	}
 
 	// Calculate expiration time
@@ -293,13 +293,13 @@ func (h *handler) apiInsertBookmark(w http.ResponseWriter, r *http.Request, ps h
 	// Create bookmark ID
 	book.ID, err = h.DB.CreateNewID("bookmark")
 	if err != nil {
-		panic(fmt.Errorf("failed to create ID: %v", err))
+		panic(fmt.Errorf("创建ID失败: %v", err))
 	}
 
 	// Clean up bookmark URL
 	book.URL, err = core.RemoveUTMParams(book.URL)
 	if err != nil {
-		panic(fmt.Errorf("failed to clean URL: %v", err))
+		panic(fmt.Errorf("无法清理网址: %v", err))
 	}
 
 	// Make sure bookmark's title not empty
@@ -310,24 +310,24 @@ func (h *handler) apiInsertBookmark(w http.ResponseWriter, r *http.Request, ps h
 	if !payload.Async {
 		book, err = downloadBookmarkContent(book, h.DataDir, r)
 		if err != nil {
-			log.Printf("error downloading boorkmark: %s", err)
+			log.Printf("下载书签时出错: %s", err)
 		}
 	}
 
 	// Save bookmark to database
 	results, err := h.DB.SaveBookmarks(*book)
 	if err != nil || len(results) == 0 {
-		panic(fmt.Errorf("failed to save bookmark: %v", err))
+		panic(fmt.Errorf("保存书签失败: %v", err))
 	}
 
 	if payload.Async {
 		go func() {
 			bookmark, err := downloadBookmarkContent(book, h.DataDir, r)
 			if err != nil {
-				log.Printf("error downloading boorkmark: %s", err)
+				log.Printf("下载书签时出错: %s", err)
 			}
 			if _, err := h.DB.SaveBookmarks(*bookmark); err != nil {
-				log.Printf("failed to save bookmark: %s", err)
+				log.Printf("保存书签失败: %s", err)
 			}
 		}()
 	}
@@ -379,7 +379,7 @@ func (h *handler) apiUpdateBookmark(w http.ResponseWriter, r *http.Request, ps h
 
 	// Validate input
 	if request.Title == "" {
-		panic(fmt.Errorf("Title must not empty"))
+		panic(fmt.Errorf("标题不能为空"))
 	}
 
 	// Get existing bookmark from database
@@ -391,7 +391,7 @@ func (h *handler) apiUpdateBookmark(w http.ResponseWriter, r *http.Request, ps h
 	bookmarks, err := h.DB.GetBookmarks(filter)
 	checkError(err)
 	if len(bookmarks) == 0 {
-		panic(fmt.Errorf("no bookmark with matching ids"))
+		panic(fmt.Errorf("没有匹配 ID 的书签"))
 	}
 
 	// Set new bookmark data
@@ -404,7 +404,7 @@ func (h *handler) apiUpdateBookmark(w http.ResponseWriter, r *http.Request, ps h
 	// Clean up bookmark URL
 	book.URL, err = core.RemoveUTMParams(book.URL)
 	if err != nil {
-		panic(fmt.Errorf("failed to clean URL: %v", err))
+		panic(fmt.Errorf("无法清理网址: %v", err))
 	}
 
 	// Set new tags
@@ -466,15 +466,15 @@ func (h *handler) apiUpdateCache(w http.ResponseWriter, r *http.Request, ps http
 	bookmarks, err := h.DB.GetBookmarks(filter)
 	checkError(err)
 	if len(bookmarks) == 0 {
-		panic(fmt.Errorf("no bookmark with matching ids"))
+		panic(fmt.Errorf("没有匹配 ID 的书签"))
 	}
 
 	// For web interface, let's limit to max 20 IDs to update, and 5 for archival.
 	// This is done to prevent the REST request from client took too long to finish.
 	if len(bookmarks) > 20 {
-		panic(fmt.Errorf("max 20 bookmarks to update"))
+		panic(fmt.Errorf("最多同时更新20个书签"))
 	} else if len(bookmarks) > 5 && request.CreateArchive {
-		panic(fmt.Errorf("max 5 bookmarks to update with archival"))
+		panic(fmt.Errorf("最多5个书签同时更新存档"))
 	}
 
 	// Fetch data from internet
@@ -575,7 +575,7 @@ func (h *handler) apiUpdateBookmarkTags(w http.ResponseWriter, r *http.Request, 
 
 	// Validate input
 	if len(request.IDs) == 0 || len(request.Tags) == 0 {
-		panic(fmt.Errorf("IDs and tags must not empty"))
+		panic(fmt.Errorf("ID 和标签不能为空"))
 	}
 
 	// Get existing bookmark from database
@@ -587,7 +587,7 @@ func (h *handler) apiUpdateBookmarkTags(w http.ResponseWriter, r *http.Request, 
 	bookmarks, err := h.DB.GetBookmarks(filter)
 	checkError(err)
 	if len(bookmarks) == 0 {
-		panic(fmt.Errorf("no bookmark with matching ids"))
+		panic(fmt.Errorf("没有匹配 ID 的书签"))
 	}
 
 	// Set new tags
@@ -681,13 +681,13 @@ func (h *handler) apiUpdateAccount(w http.ResponseWriter, r *http.Request, ps ht
 	// Get existing account data from database
 	account, exist := h.DB.GetAccount(request.Username)
 	if !exist {
-		panic(fmt.Errorf("username doesn't exist"))
+		panic(fmt.Errorf("用户名不存在"))
 	}
 
 	// Compare old password with database
 	err = bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.OldPassword))
 	if err != nil {
-		panic(fmt.Errorf("old password doesn't match"))
+		panic(fmt.Errorf("旧密码不匹配"))
 	}
 
 	// Save new password to database

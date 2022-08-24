@@ -72,8 +72,8 @@ var template = `
     </div>
     <div class="loading-overlay" v-if="loading"><i class="fas fa-fw fa-spin fa-spinner"></i></div>
     <custom-dialog id="dialog-tags" v-bind="dialogTags">
-        <a @click="filterTag('*')">(all tagged)</a>
-        <a @click="filterTag('*', true)">(all untagged)</a>
+        <a @click="filterTag('*')">(全部已标记)</a>
+        <a @click="filterTag('*', true)">(全部未标记)</a>
         <a v-for="tag in tags" @click="dialogTagClicked($event, tag)">
             #{{tag.name}}<span>{{tag.nBookmarks}}</span>
         </a>
