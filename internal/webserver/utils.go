@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -85,7 +84,7 @@ func redirectPage(w http.ResponseWriter, r *http.Request, url string) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
-	http.Redirect(w, r, url, 301)
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
 
 func assetExists(filePath string) bool {
@@ -110,7 +109,7 @@ func createTemplate(filename string, funcMap template.FuncMap) (*template.Templa
 	defer src.Close()
 
 	// Read file content
-	srcContent, err := ioutil.ReadAll(src)
+	srcContent, err := io.ReadAll(src)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,8 @@ import (
 
 // apiInsertViaExtension is handler for POST /api/bookmarks/ext
 func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	// Make sure session still valid
 	err := h.validateSession(r)
 	checkError(err)
@@ -34,7 +36,10 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Check if bookmark already exists.
-	book, exist := h.DB.GetBookmark(0, request.URL)
+	book, exist, err := h.DB.GetBookmark(ctx, 0, request.URL)
+	if err != nil {
+		panic(fmt.Errorf("获取书签失败, URL: %v", err))
+	}
 
 	// If it already exists, we need to set ID and tags.
 	if exist {
@@ -50,12 +55,8 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 				book.Tags = append(book.Tags, newTag)
 			}
 		}
-	} else {
-		book = request
-		book.ID, err = h.DB.CreateNewID("bookmark")
-		if err != nil {
-			panic(fmt.Errorf("failed to create ID: %v", err))
-		}
+	} else if request.Title == "" {
+		request.Title = request.URL
 	}
 
 	// Since we are using extension, the extension might send the HTML content
@@ -70,6 +71,15 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 		contentType = "text/html; charset=UTF-8"
 		contentBuffer = bytes.NewBufferString(book.HTML)
 	}
+
+	// Save the bookmark with whatever we already have downloaded
+	// since we need the ID in order to download the archive
+	books, err := h.DB.SaveBookmarks(ctx, true, request)
+	if err != nil {
+		log.Printf("在下载内容之前保存书签出错: %s", err)
+		return
+	}
+	book = books[0]
 
 	// At this point the web page already downloaded.
 	// Time to process it.
@@ -89,20 +99,14 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 			tmp.Close()
 		}
 
+		// If we can't process or update the saved bookmark, just log it and continue on with the
+		// request.
 		if err != nil && isFatalErr {
-			panic(fmt.Errorf("failed to process bookmark: %v", err))
+			log.Printf("无法处理书签: %v", err)
+		} else if _, err := h.DB.SaveBookmarks(ctx, false, book); err != nil {
+			log.Printf("下载内容后保存书签出错: %s", err)
 		}
 	}
-	if _, err := h.DB.SaveBookmarks(book); err != nil {
-		log.Printf("error saving bookmark after downloading content: %s", err)
-	}
-
-	// Save bookmark to database
-	results, err := h.DB.SaveBookmarks(book)
-	if err != nil || len(results) == 0 {
-		panic(fmt.Errorf("failed to save bookmark: %v", err))
-	}
-	book = results[0]
 
 	// Return the new bookmark
 	w.Header().Set("Content-Type", "application/json")
@@ -112,6 +116,8 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 
 // apiDeleteViaExtension is handler for DELETE /api/bookmark/ext
 func (h *handler) apiDeleteViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	// Make sure session still valid
 	err := h.validateSession(r)
 	checkError(err)
@@ -122,10 +128,12 @@ func (h *handler) apiDeleteViaExtension(w http.ResponseWriter, r *http.Request, 
 	checkError(err)
 
 	// Check if bookmark already exists.
-	book, exist := h.DB.GetBookmark(0, request.URL)
+	book, exist, err := h.DB.GetBookmark(ctx, 0, request.URL)
+	checkError(err)
+
 	if exist {
 		// Delete bookmarks
-		err = h.DB.DeleteBookmarks(book.ID)
+		err = h.DB.DeleteBookmarks(ctx, book.ID)
 		checkError(err)
 
 		// Delete thumbnail image and archives from local disk

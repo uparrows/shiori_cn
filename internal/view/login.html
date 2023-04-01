@@ -35,7 +35,7 @@
 				</div>
 				<div id="input-area">
 					<label for="username">用户名: </label>
-					<input id="username" type="text" name="username" placeholder="用户名" tabindex="1">
+					<input id="username" type="text" name="username" placeholder="用户名" tabindex="1" autofocus />
 					<label for="password">密码: </label>
 					<input id="password" type="password" name="password" placeholder="密码" tabindex="2"
 						@keyup.enter="login">
@@ -105,9 +105,7 @@
 						return response.json();
 					}).then(json => {
 						// Save session id
-						var sessionAge = this.remember == 1 ? 60 * 60 * 24 * 30 : 60 * 60
-						var expTime = new Date(Date.now() + sessionAge * 1000).toUTCString();
-						document.cookie = `session-id=${json.session}; Path=${new URL(document.baseURI).pathname}; Expires=${expTime}`;
+						document.cookie = `session-id=${json.session}; Path=${new URL(document.baseURI).pathname}; Expires=${json.expires}`;
 
 						// Save account data
 						localStorage.setItem("shiori-account", JSON.stringify(json.account));
@@ -142,6 +140,9 @@
 				// Load setting
 				this.loadSetting();
 				localStorage.removeItem("shiori-account");
+
+				// <input autofocus> wasn't working all the time, so I'm putting this here as a fallback
+				document.querySelector('#username').focus()
 			}
 		})
 	</script>

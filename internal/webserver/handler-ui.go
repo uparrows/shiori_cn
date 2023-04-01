@@ -14,9 +14,10 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/go-shiori/shiori/internal/model"
 	"github.com/go-shiori/warc"
 	"github.com/julienschmidt/httprouter"
+
+	"github.com/go-shiori/shiori/internal/model"
 )
 
 // serveFile is handler for general file request
@@ -24,6 +25,7 @@ func (h *handler) serveFile(w http.ResponseWriter, r *http.Request, ps httproute
 	rootPath := strings.Trim(h.RootPath, "/")
 	urlPath := strings.Trim(r.URL.Path, "/")
 	filePath := strings.TrimPrefix(urlPath, rootPath)
+	filePath = strings.Trim(filePath, "/")
 
 	err := serveFile(w, filePath, true)
 	checkError(err)
@@ -90,15 +92,19 @@ func (h *handler) serveLoginPage(w http.ResponseWriter, r *http.Request, ps http
 
 // serveBookmarkContent is handler for GET /bookmark/:id/content
 func (h *handler) serveBookmarkContent(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	// Get bookmark ID from URL
 	strID := ps.ByName("id")
 	id, err := strconv.Atoi(strID)
 	checkError(err)
 
 	// Get bookmark in database
-	bookmark, exist := h.DB.GetBookmark(id, "")
+	bookmark, exist, err := h.DB.GetBookmark(ctx, id, "")
+	checkError(err)
+
 	if !exist {
-		panic(fmt.Errorf("Bookmark not found"))
+		panic(fmt.Errorf("bookmark not found"))
 	}
 
 	// If it's not public, make sure session still valid
@@ -233,6 +239,8 @@ func (h *handler) serveThumbnailImage(w http.ResponseWriter, r *http.Request, ps
 
 // serveBookmarkArchive is handler for GET /bookmark/:id/archive/*filepath
 func (h *handler) serveBookmarkArchive(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	// Get parameter from URL
 	strID := ps.ByName("id")
 	resourcePath := ps.ByName("filepath")
@@ -242,9 +250,11 @@ func (h *handler) serveBookmarkArchive(w http.ResponseWriter, r *http.Request, p
 	id, err := strconv.Atoi(strID)
 	checkError(err)
 
-	bookmark, exist := h.DB.GetBookmark(id, "")
+	bookmark, exist, err := h.DB.GetBookmark(ctx, id, "")
+	checkError(err)
+
 	if !exist {
-		panic(fmt.Errorf("Bookmark not found"))
+		panic(fmt.Errorf("找不到书签"))
 	}
 
 	// If it's not public, make sure session still valid

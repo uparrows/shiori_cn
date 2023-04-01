@@ -6,8 +6,10 @@ import (
 	fp "path/filepath"
 
 	"github.com/go-shiori/shiori/internal/database"
+	"github.com/go-shiori/shiori/internal/model"
 	apppaths "github.com/muesli/go-app-paths"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -36,7 +38,6 @@ func ShioriCmd() *cobra.Command {
 		pocketCmd(),
 		serveCmd(),
 		checkCmd(),
-		migrateCmd(),
 	)
 
 	return rootCmd
@@ -54,16 +55,22 @@ func preRunRootHandler(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	err = os.MkdirAll(dataDir, os.ModePerm)
+	err = os.MkdirAll(dataDir, model.DataDirPerm)
 	if err != nil {
 		cError.Printf("Failed to create data dir: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Open database
-	db, err = openDatabase()
+	db, err = openDatabase(cmd.Context())
 	if err != nil {
 		cError.Printf("Failed to open database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Migrate
+	if err := db.Migrate(); err != nil {
+		cError.Printf("Error running migration: %s\n", err)
 		os.Exit(1)
 	}
 }
@@ -101,33 +108,33 @@ func getDataDir(portableMode bool) (string, error) {
 	return ".", nil
 }
 
-func openDatabase() (database.DB, error) {
+func openDatabase(ctx context.Context) (database.DB, error) {
 	switch dbms, _ := os.LookupEnv("SHIORI_DBMS"); dbms {
 	case "mysql":
-		return openMySQLDatabase()
+		return openMySQLDatabase(ctx)
 	case "postgresql":
-		return openPostgreSQLDatabase()
+		return openPostgreSQLDatabase(ctx)
 	default:
-		return openSQLiteDatabase()
+		return openSQLiteDatabase(ctx)
 	}
 }
 
-func openSQLiteDatabase() (database.DB, error) {
+func openSQLiteDatabase(ctx context.Context) (database.DB, error) {
 	dbPath := fp.Join(dataDir, "shiori.db")
-	return database.OpenSQLiteDatabase(dbPath)
+	return database.OpenSQLiteDatabase(ctx, dbPath)
 }
 
-func openMySQLDatabase() (database.DB, error) {
+func openMySQLDatabase(ctx context.Context) (database.DB, error) {
 	user, _ := os.LookupEnv("SHIORI_MYSQL_USER")
 	password, _ := os.LookupEnv("SHIORI_MYSQL_PASS")
 	dbName, _ := os.LookupEnv("SHIORI_MYSQL_NAME")
 	dbAddress, _ := os.LookupEnv("SHIORI_MYSQL_ADDRESS")
 
 	connString := fmt.Sprintf("%s:%s@%s/%s?charset=utf8mb4", user, password, dbAddress, dbName)
-	return database.OpenMySQLDatabase(connString)
+	return database.OpenMySQLDatabase(ctx, connString)
 }
 
-func openPostgreSQLDatabase() (database.DB, error) {
+func openPostgreSQLDatabase(ctx context.Context) (database.DB, error) {
 	host, _ := os.LookupEnv("SHIORI_PG_HOST")
 	port, _ := os.LookupEnv("SHIORI_PG_PORT")
 	user, _ := os.LookupEnv("SHIORI_PG_USER")
@@ -136,5 +143,5 @@ func openPostgreSQLDatabase() (database.DB, error) {
 
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbName)
-	return database.OpenPGDatabase(connString)
+	return database.OpenPGDatabase(ctx, connString)
 }
