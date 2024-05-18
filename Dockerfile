@@ -2,7 +2,7 @@
 FROM docker.io/golang:1.22rc2-alpine3.19 AS builder
 WORKDIR /src
 COPY . .
-RUN go build -ldflags '-s -w'
+RUN go build -v -ldflags '-s -w'
 
 # server image
 
