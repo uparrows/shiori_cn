@@ -7,7 +7,7 @@ RUN go build -v -ldflags '-s -w'
 # server image
 
 FROM docker.io/alpine:3.19
-LABEL org.opencontainers.image.source https://github.com/go-shiori/shiori
+LABEL org.opencontainers.image.source https://github.com/uparrows/shiori_cn
 COPY --from=builder /src/shiori /usr/bin/
 USER root
 WORKDIR /shiori
