@@ -16,8 +16,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// apiInsertViaExtension is handler for POST /api/bookmarks/ext
-func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// ApiInsertViaExtension is handler for POST /api/bookmarks/ext
+func (h *Handler) ApiInsertViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
 	// Make sure session still valid
@@ -25,7 +25,7 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 	checkError(err)
 
 	// Decode request
-	request := model.Bookmark{}
+	request := model.BookmarkDTO{}
 	err = json.NewDecoder(r.Body).Decode(&request)
 	checkError(err)
 
@@ -65,21 +65,24 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 	var contentType string
 	var contentBuffer io.Reader
 
-	if book.HTML == "" {
-		contentBuffer, contentType, _ = core.DownloadBookmark(book.URL)
+	if request.HTML == "" {
+		contentBuffer, contentType, _ = core.DownloadBookmark(request.URL)
 	} else {
 		contentType = "text/html; charset=UTF-8"
-		contentBuffer = bytes.NewBufferString(book.HTML)
+		contentBuffer = bytes.NewBufferString(request.HTML)
 	}
 
 	// Save the bookmark with whatever we already have downloaded
 	// since we need the ID in order to download the archive
-	books, err := h.DB.SaveBookmarks(ctx, true, request)
-	if err != nil {
-		log.Printf("在下载内容之前保存书签出错: %s", err)
-		return
+	// Only when old bookmark is not exists.
+	if !exist {
+		books, err := h.DB.SaveBookmarks(ctx, true, request)
+		if err != nil {
+			log.Printf("在下载内容之前保存书签出错: %s", err)
+			return
+		}
+		book = books[0]
 	}
-	book = books[0]
 
 	// At this point the web page already downloaded.
 	// Time to process it.
@@ -93,7 +96,7 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 		}
 
 		var isFatalErr bool
-		book, isFatalErr, err = core.ProcessBookmark(request)
+		book, isFatalErr, err = core.ProcessBookmark(h.dependencies, request)
 
 		if tmp, ok := contentBuffer.(io.ReadCloser); ok {
 			tmp.Close()
@@ -114,8 +117,8 @@ func (h *handler) apiInsertViaExtension(w http.ResponseWriter, r *http.Request, 
 	checkError(err)
 }
 
-// apiDeleteViaExtension is handler for DELETE /api/bookmark/ext
-func (h *handler) apiDeleteViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// ApiDeleteViaExtension is handler for DELETE /api/bookmark/ext
+func (h *Handler) ApiDeleteViaExtension(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
 	// Make sure session still valid
@@ -123,7 +126,7 @@ func (h *handler) apiDeleteViaExtension(w http.ResponseWriter, r *http.Request, 
 	checkError(err)
 
 	// Decode request
-	request := model.Bookmark{}
+	request := model.BookmarkDTO{}
 	err = json.NewDecoder(r.Body).Decode(&request)
 	checkError(err)
 

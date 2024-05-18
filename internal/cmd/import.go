@@ -29,6 +29,8 @@ func importCmd() *cobra.Command {
 }
 
 func importHandler(cmd *cobra.Command, args []string) {
+	_, deps := initShiori(cmd.Context(), cmd)
+
 	// Parse flags
 	generateTag := cmd.Flags().Changed("generate-tag")
 
@@ -50,7 +52,7 @@ func importHandler(cmd *cobra.Command, args []string) {
 	defer srcFile.Close()
 
 	// Parse bookmark's file
-	bookmarks := []model.Bookmark{}
+	bookmarks := []model.BookmarkDTO{}
 	mapURL := make(map[string]struct{})
 
 	doc, err := goquery.NewDocumentFromReader(srcFile)
@@ -104,7 +106,7 @@ func importHandler(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		_, exist, err := db.GetBookmark(cmd.Context(), 0, url)
+		_, exist, err := deps.Database.GetBookmark(cmd.Context(), 0, url)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			cError.Printf("Skip %s: Get Bookmark fail, %v", url, err)
 			return
@@ -133,7 +135,7 @@ func importHandler(cmd *cobra.Command, args []string) {
 		}
 
 		// Add item to list
-		bookmark := model.Bookmark{
+		bookmark := model.BookmarkDTO{
 			URL:      url,
 			Title:    title,
 			Tags:     tags,
@@ -145,7 +147,7 @@ func importHandler(cmd *cobra.Command, args []string) {
 	})
 
 	// Save bookmark to database
-	bookmarks, err = db.SaveBookmarks(cmd.Context(), true, bookmarks...)
+	bookmarks, err = deps.Database.SaveBookmarks(cmd.Context(), true, bookmarks...)
 	if err != nil {
 		cError.Printf("Failed to save bookmarks: %v\n", err)
 		os.Exit(1)

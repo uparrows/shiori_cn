@@ -6,8 +6,10 @@ Before using `shiori`, make sure it has been installed on your system. By defaul
 - [Using Command Line Interface](#using-command-line-interface)
   - [Search syntax](#search-syntax)
 - [Using Web Interface](#using-web-interface)
-- [Improved import from Pocket](#improved-import-from-pocket)
-- [Import from Wallabag](#import-from-wallabag)
+- [Community contributions](#community-contributions)
+  - [Improved import from Pocket](#improved-import-from-pocket)
+  - [Import from Wallabag](#import-from-wallabag)
+  - [Add URL to Shiori from Android](#add-url-to-shiori-from-android)
 
 <!-- /TOC -->
 
@@ -62,8 +64,9 @@ Available Commands:
   open        Open the saved bookmarks
   pocket      Import bookmarks from Pocket's exported HTML file
   print       Print the saved bookmarks
-  serve       Serve web interface for managing bookmarks
+  server      Run the Shiori webserver
   update      Update the saved bookmarks
+  version     Output the shiori version
 
 Flags:
   -h, --help       help for shiori
@@ -73,37 +76,35 @@ Use "shiori [command] --help" for more information about a command.
 ```
 
 ### Search syntax
+
 With the `print` command line interface, you can use `-s` flag to submit keywords that will be searched either in url, title, excerpts or cached content.
 You may also use `-t` flag to include tags and `-e` flag to exclude tags.
 
-
-
 ## Using Web Interface
 
-To access web interface run `shiori serve` or start Docker container following tutorial above. If you want to use a different port instead of 8080, you can simply run `shiori serve -p <portnumber>`. Once started you can access the web interface in `http://localhost:8080` or `http://localhost:<portnumber>` if you customized it. You will be greeted with login screen like this :
+To access web interface run `shiori server` or start Docker container following tutorial above. If you want to use a different port instead of 8080, you can simply run `shiori server -p <portnumber>`. Once started you can access the web interface in `http://localhost:8080` or `http://localhost:<portnumber>` if you customized it. You will be greeted with login screen like this :
 
 ![Login screen](https://raw.githubusercontent.com/go-shiori/shiori/master/docs/screenshots/01-login.png)
 
-Since this is our first time, we don't have any account registered yet. With that said, we can use the default user to access web interface :
+Since this is our first time, we don't have any account registered yet. With that said, we can use the default user to access web interface:
 
 ```
 username: shiori
 password: gopher
 ```
 
-Once login succeed you will be able to use the web interface. To add the new account, open the settings page and add accounts as needed :
+Once login succeed you will be able to use the web interface. To add the new account, open the settings page and add accounts as needed:
 
 ![Options page](https://raw.githubusercontent.com/go-shiori/shiori/master/docs/screenshots/04-options.png)
-
-The first new account you add will become the owner and it will deactivate the "shiori:gopher" default user automatically.
 
 When searching for bookmarks, you may use `tag:tagname` to include tags and `-tag:tagname` to exclude tags in the search bar. You can also use tags dialog to do this :
 
 - `Click` on the tag name to include it;
 - `Alt + Click` on the tag name to exclude it.
 
+## Community contributions
 
-## Improved import from Pocket
+### Improved import from Pocket
 
 Shiori offers a [Command Line Interface](https://github.com/go-shiori/shiori/blob/master/docs/Usage.md#using-command-line-interface) with the command `shiori pocket` to import Pocket entries but with this can only import them as links and not as complete entries.
 
@@ -133,7 +134,7 @@ This is optional, but once the import is complete you can clean up by running:
 rm pocket2shiori.sh 'path_to_your/pocket_export.html'
 ```
 
-##  Import from Wallabag
+###  Import from Wallabag
 
 
 1. Export your entries from Wallabag as a json file
@@ -152,3 +153,36 @@ inside the container.
     chmod +x wallabag2shiori
     ./wallabag2shiori 'path/to/to/wallabag_export_json_file'
   ```
+
+
+###  Add URL to Shiori from Android
+
+
+1. Install [Termux](https://termux.dev/en/)
+2. Open termux and run bellow command
+```bash
+mkdir -p ~/bin
+touch ~/bin/termux-url-opener
+chmod +x ~/bin/termux-url-opener
+nano ~/bin/termux-url-opener
+```
+3. Edit bellow code and replace `Shiori_URL`, `Username`, `Password` with yours
+```bash
+#!/bin/bash
+
+# shiori settings
+Shiori_URL="http://127.0.0.1:8080"
+Username="shiori"
+Password="gopher"
+
+token=$(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "'"$Username"'" , "password": "'"$Password"'", "remember": true}' $Shiori_URL/api/v1/auth/login | grep -oP '(?<="token":")[^"]*')
+
+curl -s -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{ "url": "'"$1"'", "createArchive": false, "public": 1, "tags": [], "title": "", "excerpt": "" }' $Shiori_URL/api/bookmarks
+exit
+```
+4. Paste above content in editor and `Volume-down` and `o` than Enter to save file.
+5. `Volume-down` and `x` to exit editor.
+6. close termux
+
+
+You can share links with termux from Share menu links will automatically add to Shiori from mobile device.

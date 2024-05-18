@@ -6,6 +6,7 @@ import (
 	nurl "net/url"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -40,7 +41,7 @@ func isURLValid(s string) bool {
 	return err == nil && tmp.Scheme != "" && tmp.Hostname() != ""
 }
 
-func printBookmarks(bookmarks ...model.Bookmark) {
+func printBookmarks(bookmarks ...model.BookmarkDTO) {
 	for _, bookmark := range bookmarks {
 		// Create bookmark index
 		strBookmarkIndex := fmt.Sprintf("%d. ", bookmark.ID)
@@ -163,4 +164,8 @@ func validateTitle(title, fallback string) string {
 	}
 
 	return validUtf
+}
+
+func SFCallerPrettyfier(frame *runtime.Frame) (string, string) {
+	return "", fmt.Sprintf("%s:%d", path.Base(frame.File), frame.Line)
 }

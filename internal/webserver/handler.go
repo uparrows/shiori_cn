@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 
 	"github.com/go-shiori/shiori/internal/database"
+	"github.com/go-shiori/shiori/internal/dependencies"
 	"github.com/go-shiori/shiori/internal/model"
-	"github.com/go-shiori/warc"
 	cch "github.com/patrickmn/go-cache"
+	"github.com/sirupsen/logrus"
 )
 
-var developmentMode = false
-
-// Handler is handler for serving the web interface.
-type handler struct {
+// Handler is Handler for serving the web interface.
+type Handler struct {
 	DB           database.DB
 	DataDir      string
 	RootPath     string
@@ -23,10 +23,12 @@ type handler struct {
 	ArchiveCache *cch.Cache
 	Log          bool
 
+	dependencies *dependencies.Dependencies
+
 	templates map[string]*template.Template
 }
 
-func (h *handler) prepareSessionCache() {
+func (h *Handler) PrepareSessionCache() {
 	h.SessionCache.OnEvicted(func(key string, val interface{}) {
 		account := val.(model.Account)
 		arr, found := h.UserCache.Get(account.Username)
@@ -46,14 +48,7 @@ func (h *handler) prepareSessionCache() {
 	})
 }
 
-func (h *handler) prepareArchiveCache() {
-	h.ArchiveCache.OnEvicted(func(key string, data interface{}) {
-		archive := data.(*warc.Archive)
-		archive.Close()
-	})
-}
-
-func (h *handler) prepareTemplates() error {
+func (h *Handler) PrepareTemplates() error {
 	// Prepare variables
 	var err error
 	h.templates = make(map[string]*template.Template)
@@ -78,9 +73,9 @@ func (h *handler) prepareTemplates() error {
 		`<div id="shiori-archive-header">
 		<p id="shiori-logo"><span>栞</span>shiori</p>
 		<div class="spacer"></div>
-		<a href="$$.URL$$" target="_blank">查看原始链接</a>
+		<a href="$$.URL$$" target="_blank" rel="noopener noreferrer">查看原始链接</a>
 		$$if .HasContent$$
-		<a href="/bookmark/$$.ID$$/content">查看可读</a>
+		<a href="/bookmark/$$.ID$$/content">查看只读</a>
 		$$end$$
 		</div>`)
 	if err != nil {
@@ -90,7 +85,7 @@ func (h *handler) prepareTemplates() error {
 	return nil
 }
 
-func (h *handler) getSessionID(r *http.Request) string {
+func (h *Handler) GetSessionID(r *http.Request) string {
 	// Try to get session ID from the header
 	sessionID := r.Header.Get("X-Session-Id")
 
@@ -108,8 +103,33 @@ func (h *handler) getSessionID(r *http.Request) string {
 }
 
 // validateSession checks whether user session is still valid or not
-func (h *handler) validateSession(r *http.Request) error {
-	sessionID := h.getSessionID(r)
+func (h *Handler) validateSession(r *http.Request) error {
+	authorization := r.Header.Get(model.AuthorizationHeader)
+	if authorization != "" {
+		authParts := strings.SplitN(authorization, " ", 2)
+		if len(authParts) != 2 && authParts[0] != model.AuthorizationTokenType {
+			return fmt.Errorf("会话已过期")
+		}
+
+		account, err := h.dependencies.Domains.Auth.CheckToken(r.Context(), authParts[1])
+		if err != nil {
+			return fmt.Errorf("会话已过期")
+		}
+
+		if r.Method != "" && r.Method != "GET" && !account.Owner {
+			return fmt.Errorf("账户级别不够")
+		}
+
+		h.dependencies.Log.WithFields(logrus.Fields{
+			"username": account.Username,
+			"method":   r.Method,
+			"path":     r.URL.Path,
+		}).Info("允许使用 JWT 令牌访问旧版 api")
+
+		return nil
+	}
+
+	sessionID := h.GetSessionID(r)
 	if sessionID == "" {
 		return fmt.Errorf("会话不存在")
 	}
