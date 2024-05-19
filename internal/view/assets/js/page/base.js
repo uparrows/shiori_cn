@@ -41,7 +41,7 @@ export default {
 				content: "",
 				fields: [],
 				showLabel: false,
-				mainText: "Yes",
+				mainText: "是",
 				secondText: "",
 				mainClick: () => {
 					this.dialog.visible = false;
@@ -88,8 +88,8 @@ export default {
 					.trim()
 					.toLowerCase()
 			) {
-				case "session is not exist":
-				case "session has been expired":
+				case "会话不存在":
+				case "会话已过期":
 					return true;
 				default:
 					return false;
@@ -98,14 +98,14 @@ export default {
 		showErrorDialog(msg) {
 			var sessionError = this.isSessionError(msg),
 				dialogContent = sessionError
-					? "Session has expired, please login again."
+					? "会话已过期或未登录, 请重新登录."
 					: msg;
 
 			this.showDialog({
 				visible: true,
-				title: "Error",
+				title: "错误",
 				content: dialogContent,
-				mainText: "OK",
+				mainText: "确定",
 				mainClick: () => {
 					this.dialog.visible = false;
 					if (sessionError) {

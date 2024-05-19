@@ -80,7 +80,7 @@ export default {
 		},
 		mainText: {
 			type: String,
-			default: "OK",
+			default: "确定",
 		},
 		secondText: String,
 		mainClick: {

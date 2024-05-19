@@ -26,9 +26,9 @@
 			<p id="metadata" v-cloak>添加 {{localtime()}}</p>
 			<p id="title" dir="auto">$$.Book.Title$$</p>
 			<div id="links">
-				<a href="$$.Book.URL$$" target="_blank" rel="noopener noreferrer">查看原始连接</a>
+				<a href="$$.Book.URL$$" target="_blank" rel="noopener noreferrer">原始链接</a>
 				$$if .Book.HasArchive$$
-				<a href="bookmark/$$.Book.ID$$/archive">查看档案</a>
+				<a href="bookmark/$$.Book.ID$$/archive">查看存档</a>
 				$$end$$
 				$$if .Book.HasEbook$$
 				<a href="bookmark/$$.Book.ID$$/ebook" download="$$.Book.Title$$.epub">下载图书</a>

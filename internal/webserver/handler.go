@@ -73,9 +73,9 @@ func (h *Handler) PrepareTemplates() error {
 		`<div id="shiori-archive-header">
 		<p id="shiori-logo"><span>栞</span>shiori</p>
 		<div class="spacer"></div>
-		<a href="$$.URL$$" target="_blank" rel="noopener noreferrer">查看原始链接</a>
+		<a href="$$.URL$$" target="_blank" rel="noopener noreferrer">原始链接</a>
 		$$if .HasContent$$
-		<a href="/bookmark/$$.ID$$/content">查看只读</a>
+		<a href="/bookmark/$$.ID$$/content">阅读模式</a>
 		$$end$$
 		</div>`)
 	if err != nil {

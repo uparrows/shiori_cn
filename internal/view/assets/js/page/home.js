@@ -391,7 +391,7 @@ export default {
 					},
 					{
 						name: "create_archive",
-						label: "Create archive",
+						label: "创建存档",
 						type: "check",
 						value: this.appOptions.UseArchive,
 					},
@@ -510,7 +510,7 @@ export default {
 					},
 					{
 						name: "makePublic",
-						label: "使存案公开可用",
+						label: "使存档公开可用",
 						type: "check",
 						value: book.public >= 1,
 					},
@@ -787,13 +787,13 @@ export default {
 								if (data.create_archive && !book.hasArchive) {
 									faildedUpdateArchives.push(book.id);
 									console.error(
-										"无法更新该ID书签的存档",
+										"无法更新该书签的存档",
 										book.id,
 									);
 								}
 								if (data.create_ebook && !book.hasEbook) {
 									faildedCreateEbook.push(book.id);
-									console.error("无法更新该ID图书 :", book.id);
+									console.error("无法更新该图书 :", book.id);
 								}
 							});
 							if (
@@ -801,9 +801,9 @@ export default {
 								faildedUpdateArchives.length > 0
 							) {
 								this.showDialog({
-									title: `更新失败的书签ID`,
-									content: `并非所有书签的内容都可以更新，但不会覆盖任何文件。`,
-									mainText: "是",
+									title: `书签更新失败`,
+									content: `并非所有书签的内容都可以更新，本次操作不会覆盖任何文件。`,
+									mainText: "确定",
 									mainClick: () => {
 										this.dialog.visible = false;
 									},

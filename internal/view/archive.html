@@ -12,9 +12,9 @@
     <div id="shiori-archive-header" class="header">
         <p id="shiori-logo"><span>栞</span>shiori</p>
         <div class="spacer"></div>
-        <a href="$$.URL$$" target="_blank">查看原文</a>
+        <a href="$$.Book.URL$$" target="_blank" rel="noopener noreferrer" >查看原文</a>
         $$if .Book.HasContent$$
-        <a href="/bookmark/$$.Book.ID$$/content">查看只读</a>
+        <a href="/bookmark/$$.Book.ID$$/content">阅读模式</a>
         $$end$$
     </div>
     <iframe src="/bookmark/$$.Book.ID$$/archive/file/" frameborder="0"></iframe>
