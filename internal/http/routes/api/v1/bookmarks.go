@@ -97,7 +97,7 @@ type readableResponseMessage struct {
 //	@Tags						Auth
 //	@securityDefinitions.apikey	ApiKeyAuth
 //	@Produce					json
-//	@Success					200	{object}    contentResponseMessage
+//	@Success					200	{object}    readableResponseMessage
 //	@Failure					403	{object}	nil	"Token not provided/invalid"
 //	@Router						/api/v1/bookmarks/id/readable [get]
 func (r *BookmarksAPIRoutes) bookmarkReadable(c *gin.Context) {
@@ -217,6 +217,11 @@ func (r *BookmarksAPIRoutes) updateCache(c *gin.Context) {
 			content.Close()
 
 			if err != nil {
+				r.logger.WithFields(logrus.Fields{
+					"bookmark_id": book.ID,
+					"url":         book.URL,
+					"error":       err,
+				}).Error("error downloading bookmark cache")
 				chProblem <- book.ID
 				return
 			}

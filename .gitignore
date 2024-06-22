@@ -12,7 +12,7 @@
 /dev-data*
 
 # Coverage data
-/coverage.out
+/coverage.*
 
 # Dist files
 dist/
@@ -22,3 +22,6 @@ dist/
 
 # frontend
 node_modules
+
+# workaround for buildx using podman
+type=docker

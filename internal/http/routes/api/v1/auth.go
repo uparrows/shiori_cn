@@ -35,10 +35,10 @@ type loginRequestPayload struct {
 
 func (p *loginRequestPayload) IsValid() error {
 	if p.Username == "" {
-		return fmt.Errorf("username should not be empty")
+		return fmt.Errorf("用户名不能为空")
 	}
 	if p.Password == "" {
-		return fmt.Errorf("password should not be empty")
+		return fmt.Errorf("密码不能为空")
 	}
 	return nil
 }

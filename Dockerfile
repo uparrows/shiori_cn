@@ -2,7 +2,7 @@
 ARG ALPINE_VERSION
 ARG GOLANG_VERSION
 
-FROM docker.io/library/alpine:3.19 AS builder
+FROM docker.io/library/alpine:${ALPINE_VERSION} AS builder
 ARG TARGETARCH
 ARG TARGETOS
 ARG TARGETVARIANT

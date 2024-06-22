@@ -30,7 +30,7 @@ func (d *BookmarksDomain) HasThumbnail(b *model.BookmarkDTO) bool {
 func (d *BookmarksDomain) GetBookmark(ctx context.Context, id model.DBID) (*model.BookmarkDTO, error) {
 	bookmark, exists, err := d.deps.Database.GetBookmark(ctx, int(id), "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bookmark: %w", err)
+		return nil, fmt.Errorf("获取书签失败: %w", err)
 	}
 
 	if !exists {

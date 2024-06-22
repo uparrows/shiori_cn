@@ -5,6 +5,14 @@ var template = `
         <details open class="setting-group" id="setting-display">
             <summary>显示</summary>
             <label>
+                主题 &nbsp;
+                <select v-model="appOptions.Theme" @change="saveSetting">
+                <option value="follow">跟随系统</option>
+                <option value="light">浅色主题</option>
+                <option value="dark">深色主题</option>
+                </select>
+            </label>
+            <label>
                 <input type="checkbox" v-model="appOptions.ShowId" @change="saveSetting">
                 显示书签ID
             </label>
@@ -19,10 +27,6 @@ var template = `
             <label>
                 <input type="checkbox" v-model="appOptions.HideExcerpt" @change="saveSetting">
                 隐藏书签的节选
-            </label>
-            <label>
-                <input type="checkbox" v-model="appOptions.NightMode" @change="saveSetting">
-                使用深色主题
             </label>
         </details>
         <details v-if="activeAccount.owner" open class="setting-group" id="setting-bookmarks">
@@ -101,7 +105,7 @@ export default {
 				ListMode: this.appOptions.ListMode,
 				HideThumbnail: this.appOptions.HideThumbnail,
 				HideExcerpt: this.appOptions.HideExcerpt,
-				NightMode: this.appOptions.NightMode,
+				Theme: this.appOptions.Theme,
 			};
 
 			if (this.activeAccount.owner) {

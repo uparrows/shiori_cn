@@ -51,11 +51,11 @@ func (d *AccountsDomain) CheckToken(ctx context.Context, userJWT string) (*model
 func (d *AccountsDomain) GetAccountFromCredentials(ctx context.Context, username, password string) (*model.Account, error) {
 	account, _, err := d.deps.Database.GetAccount(ctx, username)
 	if err != nil {
-		return nil, fmt.Errorf("username and password do not match")
+		return nil, fmt.Errorf("用户名和密码不匹配")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(password)); err != nil {
-		return nil, fmt.Errorf("username and password do not match")
+		return nil, fmt.Errorf("用户名和密码不匹配")
 	}
 
 	return &account, nil
