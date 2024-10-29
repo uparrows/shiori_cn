@@ -1,5 +1,5 @@
 # build stage
-FROM ghcr.io/ghcri/golang:1.23.2-alpine3.20 AS builder
+FROM golang:1.23.2-alpine3.20 AS builder
 WORKDIR /src
 COPY . .
 RUN go build -ldflags '-s -w'
