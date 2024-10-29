@@ -6,7 +6,7 @@ FROM docker.io/library/alpine:latest AS builder
 ARG TARGETARCH
 ARG TARGETOS
 ARG TARGETVARIANT
-COPY dist/shiori_${TARGETOS}_${TARGETARCH}${TARGETVARIANT}/shiori /usr/bin/shiori
+COPY dist/shiori_*/shiori /usr/bin/shiori
 RUN apk add --no-cache ca-certificates tzdata && \
     chmod +x /usr/bin/shiori && \
     rm -rf /tmp/*
