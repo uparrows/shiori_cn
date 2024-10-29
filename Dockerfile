@@ -6,7 +6,7 @@ RUN go build -ldflags '-s -w'
 
 # server image
 
-FROM ghcr.io/ghcri/alpine:3.20
+FROM alpine:3.20
 LABEL org.opencontainers.image.source https://github.com/go-shiori/shiori
 COPY --from=builder /src/shiori /usr/bin/
 RUN apk add --no-cache ca-certificates tzdata
