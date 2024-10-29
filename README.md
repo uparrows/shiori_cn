@@ -15,7 +15,6 @@ DO NOT UPLOADED TO CSDN
 
 # Shiori
 
-[![IC](https://github.com/uparrows/shiori_cn/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/uparrows/shiori_cn/actions/workflows/docker-image.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-shiori/shiori)](https://goreportcard.com/report/github.com/go-shiori/shiori)
 [![#shiori@libera.chat](https://img.shields.io/badge/irc-%23shiori-orange)](https://web.libera.chat/#shiori)
 [<img src="https://img.shields.io/docker/pulls/dezhao/shiori_cn.svg">](https://hub.docker.com/r/dezhao/shiori_cn)

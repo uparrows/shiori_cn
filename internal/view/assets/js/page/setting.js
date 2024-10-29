@@ -45,7 +45,7 @@ var template = `
             </label>
             <label>
                 <input type="checkbox" v-model="appOptions.MakePublic" @change="saveSetting">
-                默认情况下设置存档为公开
+                默认情况下公开书签
             </label>
         </details>
         <details v-if="activeAccount.owner" open class="setting-group" id="setting-accounts">
@@ -69,6 +69,14 @@ var template = `
                 <a v-if="activeAccount.owner" @click="showDialogNewAccount">添加新帐户</a>
             </div>
         </details>
+		<details v-if="activeAccount.owner" class="setting-group" id="setting-system-info">
+			<summary>系统信息</summary>
+			<ul>
+				<li><b>Shiori 版本:</b> <span>{{system.version?.tag}}<span></li>
+				<li><b>数据库引擎:</b> <span>{{system.database}}</span></li>
+				<li><b>操作系统:</b> <span>{{system.os}}</span></li>
+			</ul>
+	</details>
         <details v-if="activeAccount.owner" open class="setting-group">
             <summary>关于</summary>
             <label>
@@ -96,6 +104,7 @@ export default {
 		return {
 			loading: false,
 			accounts: [],
+			system: {},
 		};
 	},
 	methods: {
@@ -164,6 +173,28 @@ export default {
 				})
 				.catch((err) => {
 					this.loading = false;
+					this.getErrorMessage(err).then((msg) => {
+						this.showErrorDialog(msg);
+					});
+				});
+		},
+		loadSystemInfo() {
+			if (this.system.version !== undefined) return;
+
+			fetch(new URL("api/v1/system/info", document.baseURI), {
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer " + localStorage.getItem("shiori-token"),
+				},
+			})
+				.then((response) => {
+					if (!response.ok) throw response;
+					return response.json();
+				})
+				.then((json) => {
+					this.system = json.message;
+				})
+				.catch((err) => {
 					this.getErrorMessage(err).then((msg) => {
 						this.showErrorDialog(msg);
 					});
@@ -378,6 +409,9 @@ export default {
 		},
 	},
 	mounted() {
-		this.loadAccounts();
+		if (this.activeAccount.owner) {
+			this.loadAccounts();
+			this.loadSystemInfo();
+		}
 	},
 };

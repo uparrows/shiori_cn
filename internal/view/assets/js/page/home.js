@@ -48,6 +48,7 @@ var template = `
             :excerpt="book.excerpt"
             :public="book.public"
             :imageURL="book.imageURL"
+            :modifiedAt="book.modifiedAt"
             :hasContent="book.hasContent"
             :hasArchive="book.hasArchive"
             :hasEbook="book.hasEbook"
@@ -410,7 +411,7 @@ export default {
 					},
 					{
 						name: "makePublic",
-						label: "公开存档",
+						label: "公开书签",
 						type: "check",
 						value: this.appOptions.MakePublic,
 					},
@@ -517,7 +518,7 @@ export default {
 					},
 					{
 						name: "makePublic",
-						label: "使存档公开可用",
+						label: "公开书签",
 						type: "check",
 						value: book.public >= 1,
 					},
