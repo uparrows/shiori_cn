@@ -57,11 +57,6 @@ help:
 clean:
 	rm -rf dist
 
-## Runs the legacy http API for local development
-.PHONY: serve
-serve:
-	SHIORI_DEVELOPMENT=$(SHIORI_DEVELOPMENT) SHIORI_DIR=$(SHIORI_DIR) go run main.go serve
-
 ## Runs server for local development
 .PHONY: run-server
 run-server:
@@ -94,6 +89,11 @@ golangci-lint:
 .PHONY: unittest
 unittest:
 	GIN_MODE=$(GIN_MODE) GO_TEST_FLAGS="$(GO_TEST_FLAGS)" GOTESTFMT_FLAGS="$(GOTESTFMT_FLAGS)" $(BASH) -xe ./scripts/test.sh
+
+## Run end to end tests
+.PHONY: e2e
+e2e:
+	$(BASH) -xe ./scripts/e2e.sh
 
 ## Build styles
 .PHONY: styles

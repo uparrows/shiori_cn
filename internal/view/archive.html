@@ -2,22 +2,23 @@
 <html lang="zh-CN">
 
 <head>
+    <base href="$$.RootPath$$">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>$$.Book.Title$$</title>
-    <link rel="stylesheet" href="$$.RootPath$$assets/css/archive.css" />
+    <link rel="stylesheet" href="assets/css/archive.css" />
 </head>
 
 <body class="archive">
     <div id="shiori-archive-header" class="header">
         <p id="shiori-logo"><span>栞</span>shiori</p>
         <div class="spacer"></div>
-        <a href="$$.Book.URL$$" target="_blank" rel="noopener noreferrer" >查看原文</a>
+        <a href="$$.Book.URL$$" target="_blank">查看原文</a>
         $$if .Book.HasContent$$
-        <a href="/bookmark/$$.Book.ID$$/content">阅读模式</a>
+        <a href="bookmark/$$.Book.ID$$/content">阅读模式</a>
         $$end$$
     </div>
-    <iframe src="/bookmark/$$.Book.ID$$/archive/file/" frameborder="0"></iframe>
+    <iframe src="bookmark/$$.Book.ID$$/archive/file/" frameborder="0"></iframe>
 </body>
 
 </html>

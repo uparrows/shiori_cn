@@ -15,4 +15,5 @@ WORKDIR /shiori
 EXPOSE 8080
 ENV SHIORI_DIR /shiori/
 ENTRYPOINT ["/usr/bin/shiori"]
+VOLUME [ "/shiori" ]
 CMD ["server"]
