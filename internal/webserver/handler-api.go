@@ -14,14 +14,11 @@ import (
 	"strings"
 
 	"github.com/go-shiori/shiori/internal/core"
-	"github.com/go-shiori/shiori/internal/database"
-	"github.com/go-shiori/shiori/internal/dependencies"
 	"github.com/go-shiori/shiori/internal/model"
 	"github.com/julienschmidt/httprouter"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func downloadBookmarkContent(deps *dependencies.Dependencies, book *model.BookmarkDTO, dataDir string, request *http.Request, keepTitle, keepExcerpt bool) (*model.BookmarkDTO, error) {
+func downloadBookmarkContent(deps model.Dependencies, book *model.BookmarkDTO, dataDir string, _ *http.Request, keepTitle, keepExcerpt bool) (*model.BookmarkDTO, error) {
 	content, contentType, err := core.DownloadBookmark(book.URL)
 	if err != nil {
 		return nil, fmt.Errorf("下载书签时出错: %s", err)
@@ -44,17 +41,6 @@ func downloadBookmarkContent(deps *dependencies.Dependencies, book *model.Bookma
 	}
 
 	return &result, err
-}
-
-// ApiLogout is handler for POST /api/logout
-func (h *Handler) ApiLogout(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// Get session ID
-	sessionID := h.GetSessionID(r)
-	if sessionID != "" {
-		h.SessionCache.Delete(sessionID)
-	}
-
-	fmt.Fprint(w, 1)
 }
 
 // ApiGetBookmarks is handler for GET /api/bookmarks
@@ -87,13 +73,13 @@ func (h *Handler) ApiGetBookmarks(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// Prepare filter for database
-	searchOptions := database.GetBookmarksOptions{
+	searchOptions := model.DBGetBookmarksOptions{
 		Tags:         tags,
 		ExcludedTags: excludedTags,
 		Keyword:      keyword,
 		Limit:        30,
 		Offset:       (page - 1) * 30,
-		OrderMethod:  database.ByLastAdded,
+		OrderMethod:  model.ByLastAdded,
 	}
 
 	// Calculate max page
@@ -145,7 +131,9 @@ func (h *Handler) ApiGetTags(w http.ResponseWriter, r *http.Request, ps httprout
 	checkError(err)
 
 	// Fetch all tags
-	tags, err := h.DB.GetTags(ctx)
+	tags, err := h.DB.GetTags(ctx, model.DBListTagsOptions{
+		WithBookmarkCount: true,
+	})
 	checkError(err)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -212,10 +200,14 @@ func (h *Handler) ApiInsertBookmark(w http.ResponseWriter, r *http.Request, ps h
 		URL:           payload.URL,
 		Title:         payload.Title,
 		Excerpt:       payload.Excerpt,
-		Tags:          payload.Tags,
+		Tags:          make([]model.TagDTO, len(payload.Tags)),
 		Public:        payload.MakePublic,
 		CreateArchive: payload.CreateArchive,
 		CreateEbook:   payload.CreateEbook,
+	}
+
+	for i, tag := range payload.Tags {
+		book.Tags[i] = tag.ToDTO()
 	}
 
 	// Clean up bookmark URL
@@ -317,7 +309,7 @@ func (h *Handler) ApiUpdateBookmark(w http.ResponseWriter, r *http.Request, ps h
 	}
 
 	// Get existing bookmark from database
-	filter := database.GetBookmarksOptions{
+	filter := model.DBGetBookmarksOptions{
 		IDs:         []int{request.ID},
 		WithContent: true,
 	}
@@ -401,7 +393,7 @@ func (h *Handler) ApiUpdateBookmarkTags(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Get existing bookmark from database
-	filter := database.GetBookmarksOptions{
+	filter := model.DBGetBookmarksOptions{
 		IDs:         request.IDs,
 		WithContent: true,
 	}
@@ -423,7 +415,7 @@ func (h *Handler) ApiUpdateBookmarkTags(w http.ResponseWriter, r *http.Request, 
 			}
 
 			if newTag.ID == 0 {
-				book.Tags = append(book.Tags, newTag)
+				book.Tags = append(book.Tags, newTag.ToDTO())
 			}
 		}
 
@@ -448,126 +440,4 @@ func (h *Handler) ApiUpdateBookmarkTags(w http.ResponseWriter, r *http.Request, 
 	// Return new saved result
 	err = json.NewEncoder(w).Encode(&bookmarks)
 	checkError(err)
-}
-
-// ApiGetAccounts is handler for GET /api/accounts
-func (h *Handler) ApiGetAccounts(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	// Make sure session still valid
-	err := h.validateSession(r)
-	checkError(err)
-
-	// Get list of usernames from database
-	accounts, err := h.DB.GetAccounts(ctx, database.GetAccountsOptions{})
-	checkError(err)
-
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(&accounts)
-	checkError(err)
-}
-
-// ApiInsertAccount is handler for POST /api/accounts
-func (h *Handler) ApiInsertAccount(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	// Make sure session still valid
-	err := h.validateSession(r)
-	checkError(err)
-
-	// Decode request
-	var account model.Account
-	err = json.NewDecoder(r.Body).Decode(&account)
-	checkError(err)
-
-	// Save account to database
-	err = h.DB.SaveAccount(ctx, account)
-	checkError(err)
-
-	fmt.Fprint(w, 1)
-}
-
-// ApiUpdateAccount is handler for PUT /api/accounts
-func (h *Handler) ApiUpdateAccount(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	// Make sure session still valid
-	err := h.validateSession(r)
-	checkError(err)
-
-	// Decode request
-	request := struct {
-		Username    string `json:"username"`
-		OldPassword string `json:"oldPassword"`
-		NewPassword string `json:"newPassword"`
-		Owner       bool   `json:"owner"`
-	}{}
-
-	err = json.NewDecoder(r.Body).Decode(&request)
-	checkError(err)
-
-	// Get existing account data from database
-	account, exist, err := h.DB.GetAccount(ctx, request.Username)
-	checkError(err)
-
-	if !exist {
-		panic(fmt.Errorf("用户名不存在"))
-	}
-
-	// Compare old password with database
-	err = bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(request.OldPassword))
-	if err != nil {
-		panic(fmt.Errorf("旧密码不匹配"))
-	}
-
-	// Save new password to database
-	account.Password = request.NewPassword
-	account.Owner = request.Owner
-	err = h.DB.SaveAccount(ctx, account)
-	checkError(err)
-
-	// Delete user's sessions
-	if val, found := h.UserCache.Get(request.Username); found {
-		userSessions := val.([]string)
-		for _, session := range userSessions {
-			h.SessionCache.Delete(session)
-		}
-
-		h.UserCache.Delete(request.Username)
-	}
-
-	fmt.Fprint(w, 1)
-}
-
-// ApiDeleteAccount is handler for DELETE /api/accounts
-func (h *Handler) ApiDeleteAccount(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	// Make sure session still valid
-	err := h.validateSession(r)
-	checkError(err)
-
-	// Decode request
-	usernames := []string{}
-	err = json.NewDecoder(r.Body).Decode(&usernames)
-	checkError(err)
-
-	// Delete accounts
-	err = h.DB.DeleteAccounts(ctx, usernames...)
-	checkError(err)
-
-	// Delete user's sessions
-	var userSessions []string
-	for _, username := range usernames {
-		if val, found := h.UserCache.Get(username); found {
-			userSessions = val.([]string)
-			for _, session := range userSessions {
-				h.SessionCache.Delete(session)
-			}
-
-			h.UserCache.Delete(username)
-		}
-	}
-
-	fmt.Fprint(w, 1)
 }

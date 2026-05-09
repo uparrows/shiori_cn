@@ -8,9 +8,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Account is the database model for account.
+// Account is the database representation for account.
 type Account struct {
-	ID       int        `db:"id"       json:"id"`
+	ID       DBID       `db:"id"       json:"id"`
 	Username string     `db:"username" json:"username"`
 	Password string     `db:"password" json:"password,omitempty"`
 	Owner    bool       `db:"owner"    json:"owner"`
@@ -18,15 +18,15 @@ type Account struct {
 }
 
 type UserConfig struct {
-	ShowId        bool   `json:"ShowId"`
-	ListMode      bool   `json:"ListMode"`
-	HideThumbnail bool   `json:"HideThumbnail"`
-	HideExcerpt   bool   `json:"HideExcerpt"`
-	Theme         string `json:"Theme"`
-	KeepMetadata  bool   `json:"KeepMetadata"`
-	UseArchive    bool   `json:"UseArchive"`
-	CreateEbook   bool   `json:"CreateEbook"`
-	MakePublic    bool   `json:"MakePublic"`
+	ShowId        bool
+	ListMode      bool
+	HideThumbnail bool
+	HideExcerpt   bool
+	Theme         string
+	KeepMetadata  bool
+	UseArchive    bool
+	CreateEbook   bool
+	MakePublic    bool
 }
 
 func (c *UserConfig) Scan(value interface{}) error {
@@ -48,20 +48,48 @@ func (c UserConfig) Value() (driver.Value, error) {
 
 // ToDTO converts Account to AccountDTO.
 func (a Account) ToDTO() AccountDTO {
+	owner := a.Owner
+	config := a.Config
+
 	return AccountDTO{
 		ID:       a.ID,
 		Username: a.Username,
-		Owner:    a.Owner,
-		Config:   a.Config,
+		Owner:    &owner,
+		Config:   &config,
 	}
 }
 
 // AccountDTO is data transfer object for Account.
 type AccountDTO struct {
-	ID       int        `json:"id"`
-	Username string     `json:"username"`
-	Owner    bool       `json:"owner"`
-	Config   UserConfig `json:"config"`
+	ID       DBID        `json:"id"`
+	Username string      `json:"username"`
+	Password string      `json:"passowrd,omitempty"` // Used only to store, not to retrieve
+	Owner    *bool       `json:"owner"`
+	Config   *UserConfig `json:"config"`
+}
+
+func (adto *AccountDTO) IsOwner() bool {
+	return adto.Owner != nil && *adto.Owner
+}
+
+func (adto *AccountDTO) IsValidCreate() error {
+	if adto.Username == "" {
+		return NewValidationError("username", "用户名不能为空")
+	}
+
+	if adto.Password == "" {
+		return NewValidationError("password", "密码不能为空")
+	}
+
+	return nil
+}
+
+func (adto *AccountDTO) IsValidUpdate() error {
+	if adto.Username == "" && adto.Password == "" && adto.Owner == nil && adto.Config == nil {
+		return NewValidationError("account", "没有需要更新的字段")
+	}
+
+	return nil
 }
 
 type JWTClaim struct {

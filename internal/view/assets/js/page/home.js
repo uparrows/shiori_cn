@@ -35,9 +35,9 @@ var template = `
     </div>
     <p class="empty-message" v-if="!loading && listIsEmpty">尚未保存书签 :(</p>
     <div id="bookmarks-grid" ref="bookmarksGrid" :class="{list: appOptions.ListMode}">
-        <pagination-box v-if="maxPage > 1" 
-            :page="page" 
-            :maxPage="maxPage" 
+        <pagination-box v-if="maxPage > 1"
+            :page="page"
+            :maxPage="maxPage"
             :editMode="editMode"
             @change="changePage">
         </pagination-box>
@@ -81,7 +81,7 @@ var template = `
         <a @click="filterTag('*')">(全部已标记)</a>
         <a @click="filterTag('*', true)">(全部未标记)</a>
         <a v-for="tag in tags" @click="dialogTagClicked($event, tag)">
-            #{{tag.name}}<span>{{tag.nBookmarks}}</span>
+            #{{tag.name}}<span>{{tag.bookmark_count}}</span>
         </a>
     </custom-dialog>
     <custom-dialog v-bind="dialog"/>
@@ -92,6 +92,7 @@ import bookmarkItem from "../component/bookmark.js";
 import customDialog from "../component/dialog.js";
 import basePage from "./base.js";
 import EventBus from "../component/eventBus.js";
+import { apiRequest } from "../utils/api.js";
 
 Vue.prototype.$bus = EventBus;
 
@@ -167,7 +168,7 @@ export default {
 			this.search = "";
 			this.loadData(true, true);
 		},
-		loadData(saveState, fetchTags) {
+		async loadData(saveState, fetchTags) {
 			if (this.loading) return;
 
 			// Set default args
@@ -222,69 +223,45 @@ export default {
 			var skipFetchTags = Error("跳过获取标签");
 
 			this.loading = true;
-			fetch(url, {
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-				},
-			})
-				.then((response) => {
-					if (!response.ok) throw response;
-					return response.json();
-				})
-				.then((json) => {
-					// Set data
-					this.page = json.page;
-					this.maxPage = json.maxPage;
-					this.bookmarks = json.bookmarks;
+			try {
+				const json = await apiRequest(url);
 
-					// Save state and change URL if needed
-					if (saveState) {
-						var history = {
-							activePage: "page-home",
-							search: this.search,
-							page: this.page,
-						};
+				// Set data
+				this.page = json.page;
+				this.maxPage = json.maxPage;
+				this.bookmarks = json.bookmarks;
 
-						var url = new Url(document.baseURI);
-						url.hash = "home";
-						url.clearQuery();
-						if (this.page > 1) url.query.page = this.page;
-						if (this.search !== "") url.query.search = this.search;
+				// Save state and change URL if needed
+				if (saveState) {
+					var history = {
+						activePage: "page-home",
+						search: this.search,
+						page: this.page,
+					};
 
-						window.history.pushState(history, "page-home", url);
-					}
+					var url = new Url(document.baseURI);
+					url.hash = "home";
+					url.query = new URLSearchParams({
+						page: this.page,
+						search: this.search,
+					}).toString();
 
-					// Fetch tags if requested
-					if (fetchTags) {
-						return fetch(new URL("api/tags", document.baseURI), {
-							headers: {
-								"Content-Type": "application/json",
-								Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-							},
-						});
-					} else {
-						this.loading = false;
-						throw skipFetchTags;
-					}
-				})
-				.then((response) => {
-					if (!response.ok) throw response;
-					return response.json();
-				})
-				.then((json) => {
-					this.tags = json;
-					this.loading = false;
-				})
-				.catch((err) => {
-					this.loading = false;
+					window.history.pushState(history, null, url.toString());
+				}
 
-					if (err !== skipFetchTags) {
-						this.getErrorMessage(err).then((msg) => {
-							this.showErrorDialog(msg);
-						});
-					}
-				});
+				// Fetch tags if needed
+				if (!fetchTags) throw skipFetchTags;
+
+				const tagsUrl = new URL("api/tags", document.baseURI);
+				const tagsJson = await apiRequest(tagsUrl);
+				this.tags = tagsJson;
+			} catch (err) {
+				if (err !== skipFetchTags) {
+					this.showErrorDialog(err.message);
+				}
+			} finally {
+				this.loading = false;
+			}
 		},
 		searchBookmarks() {
 			this.page = 1;
@@ -373,7 +350,11 @@ export default {
 			this.page = 1;
 			this.loadData();
 		},
-		showDialogAdd() {
+		showDialogAdd(values) {
+			if (values === undefined) {
+				values = {};
+			}
+
 			this.showDialog({
 				title: "新书签",
 				content: "创建新书签",
@@ -381,15 +362,18 @@ export default {
 					{
 						name: "url",
 						label: "输入链接,以 http://开头",
+						value: values.url || "",
 					},
 					{
 						name: "title",
 						label: "自定义标题（可选）",
+						value: values.title || "",
 					},
 					{
 						name: "excerpt",
 						label: "自定义摘录（可选）",
 						type: "area",
+						value: values.excerpt || "",
 					},
 					{
 						name: "tags",
@@ -418,7 +402,7 @@ export default {
 				],
 				mainText: "确认",
 				secondText: "取消",
-				mainClick: (data) => {
+				mainClick: async (data) => {
 					// Make sure URL is not empty
 					if (data.url.trim() === "") {
 						this.showErrorDialog("网址不能为空");
@@ -431,14 +415,12 @@ export default {
 						.replace(/\s+/g, " ")
 						.split(/\s*,\s*/g)
 						.filter((tag) => tag.trim() !== "")
-						.map((tag) => {
-							return {
-								name: tag.trim(),
-							};
-						});
+						.map((tag) => ({
+							name: tag.trim(),
+						}));
 
 					// Send data
-					var data = {
+					var requestData = {
 						url: data.url.trim(),
 						title: data.title.trim(),
 						excerpt: data.excerpt.trim(),
@@ -449,29 +431,22 @@ export default {
 					};
 
 					this.dialog.loading = true;
-					fetch(new URL("api/bookmarks", document.baseURI), {
-						method: "post",
-						body: JSON.stringify(data),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response.json();
-						})
-						.then((json) => {
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-							this.bookmarks.splice(0, 0, json);
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
-						});
+					try {
+						const json = await apiRequest(
+							new URL("api/bookmarks", document.baseURI),
+							{
+								method: "post",
+								body: JSON.stringify(requestData),
+							},
+						);
+
+						this.dialog.loading = false;
+						this.dialog.visible = false;
+						this.bookmarks.splice(0, 0, json);
+					} catch (err) {
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -525,7 +500,7 @@ export default {
 				],
 				mainText: "确认",
 				secondText: "取消",
-				mainClick: (data) => {
+				mainClick: async (data) => {
 					// Validate input
 					if (data.title.trim() === "") return;
 
@@ -535,11 +510,9 @@ export default {
 						.replace(/\s+/g, " ")
 						.split(/\s*,\s*/g)
 						.filter((tag) => tag.trim() !== "")
-						.map((tag) => {
-							return {
-								name: tag.trim(),
-							};
-						});
+						.map((tag) => ({
+							name: tag.trim(),
+						}));
 
 					// Set new data
 					book.url = data.url.trim();
@@ -550,29 +523,22 @@ export default {
 
 					// Send data
 					this.dialog.loading = true;
-					fetch(new URL("api/bookmarks", document.baseURI), {
-						method: "put",
-						body: JSON.stringify(book),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response.json();
-						})
-						.then((json) => {
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-							this.bookmarks.splice(index, 1, json);
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
-						});
+					try {
+						const json = await apiRequest(
+							new URL("api/bookmarks", document.baseURI),
+							{
+								method: "put",
+								body: JSON.stringify(book),
+							},
+						);
+
+						this.dialog.loading = false;
+						this.dialog.visible = false;
+						this.bookmarks.splice(index, 1, json);
+					} catch (err) {
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -610,40 +576,29 @@ export default {
 				content: content,
 				mainText: "是",
 				secondText: "否",
-				mainClick: () => {
+				mainClick: async () => {
 					this.dialog.loading = true;
-					fetch(new URL("api/bookmarks", document.baseURI), {
-						method: "delete",
-						body: JSON.stringify(ids),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response;
-						})
-						.then(() => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-							indices.forEach((index) => this.bookmarks.splice(index, 1));
-
-							if (this.bookmarks.length < 20) {
-								this.loadData(false);
-							}
-						})
-						.catch((err) => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
-
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+					try {
+						await apiRequest(new URL("api/bookmarks", document.baseURI), {
+							method: "delete",
+							body: JSON.stringify(ids),
 						});
+
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.dialog.visible = false;
+						indices.forEach((index) => this.bookmarks.splice(index, 1));
+
+						if (this.bookmarks.length < 20) {
+							this.loadData(false);
+						}
+					} catch (err) {
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -686,7 +641,7 @@ export default {
 				.then((json) => {
 					this.selection = [];
 					this.editMode = false;
-					json.message.forEach((book) => {
+					json.forEach((book) => {
 						// download ebooks
 						const id = book.id;
 						if (book.hasEbook) {
@@ -758,8 +713,8 @@ export default {
 				],
 				mainText: "是",
 				secondText: "否",
-				mainClick: (data) => {
-					var data = {
+				mainClick: async (data) => {
+					var requestData = {
 						ids: ids,
 						create_archive: data.create_archive,
 						keep_metadata: data.keep_metadata,
@@ -768,65 +723,55 @@ export default {
 					};
 
 					this.dialog.loading = true;
-					fetch(new URL("api/v1/bookmarks/cache", document.baseURI), {
-						method: "put",
-						body: JSON.stringify(data),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response.json();
-						})
-						.then((json) => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
-							this.dialog.visible = false;
+					try {
+						const json = await apiRequest(
+							new URL("api/v1/bookmarks/cache", document.baseURI),
+							{
+								method: "put",
+								body: JSON.stringify(requestData),
+							},
+						);
 
-							let faildedUpdateArchives = [];
-							let faildedCreateEbook = [];
-							json.message.forEach((book) => {
-								var item = items.find((el) => el.id === book.id);
-								this.bookmarks.splice(item.index, 1, book);
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.dialog.visible = false;
 
-								if (data.create_archive && !book.hasArchive) {
-									faildedUpdateArchives.push(book.id);
-									console.error(
-										"无法更新该书签的存档",
-										book.id,
-									);
-								}
-								if (data.create_ebook && !book.hasEbook) {
-									faildedCreateEbook.push(book.id);
+						let faildedUpdateArchives = [];
+						let faildedCreateEbook = [];
+						json.forEach((book) => {
+							var item = items.find((el) => el.id === book.id);
+							this.bookmarks.splice(item.index, 1, book);
+
+							if (data.create_archive && !book.hasArchive) {
+								faildedUpdateArchives.push(book.id);
+								console.error("无法更新该书签的存档", book.id);
+							}
+							if (data.create_ebook && !book.hasEbook) {
+								faildedCreateEbook.push(book.id);
 									console.error("无法更新该图书 :", book.id);
-								}
-							});
-							if (
-								faildedCreateEbook.length > 0 ||
-								faildedUpdateArchives.length > 0
-							) {
-								this.showDialog({
+							}
+						});
+
+						if (
+							faildedCreateEbook.length > 0 ||
+							faildedUpdateArchives.length > 0
+						) {
+							this.showDialog({
 									title: `书签更新失败`,
 									content: `并非所有书签的内容都可以更新，本次操作不会覆盖任何文件。`,
 									mainText: "确定",
-									mainClick: () => {
-										this.dialog.visible = false;
-									},
-								});
-							}
-						})
-						.catch((err) => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
-
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
+								mainClick: () => {
+									this.dialog.visible = false;
+								},
 							});
-						});
+						}
+					} catch (err) {
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -859,18 +804,16 @@ export default {
 				],
 				mainText: "确定",
 				secondText: "取消",
-				mainClick: (data) => {
+				mainClick: async (data) => {
 					// Validate input
 					var tags = data.tags
 						.toLowerCase()
 						.replace(/\s+/g, " ")
 						.split(/\s*,\s*/g)
 						.filter((tag) => tag.trim() !== "")
-						.map((tag) => {
-							return {
-								name: tag.trim(),
-							};
-						});
+						.map((tag) => ({
+							name: tag.trim(),
+						}));
 
 					if (tags.length === 0) return;
 
@@ -881,38 +824,30 @@ export default {
 					};
 
 					this.dialog.loading = true;
-					fetch(new URL("api/bookmarks/tags", document.baseURI), {
-						method: "put",
-						body: JSON.stringify(request),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response.json();
-						})
-						.then((json) => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
-							this.dialog.visible = false;
+					try {
+						const json = await apiRequest(
+							new URL("api/v1/bookmarks/tags", document.baseURI),
+							{
+								method: "put",
+								body: JSON.stringify(request),
+							},
+						);
 
-							json.forEach((book) => {
-								var item = items.find((el) => el.id === book.id);
-								this.bookmarks.splice(item.index, 1, book);
-							});
-						})
-						.catch((err) => {
-							this.selection = [];
-							this.editMode = false;
-							this.dialog.loading = false;
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.dialog.visible = false;
 
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+						json.forEach((book) => {
+							var item = items.find((el) => el.id === book.id);
+							this.bookmarks.splice(item.index, 1, book);
 						});
+					} catch (err) {
+						this.selection = [];
+						this.editMode = false;
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -944,7 +879,7 @@ export default {
 					this.dialog.visible = false;
 					this.dialogTags.visible = true;
 				},
-				mainClick: (data) => {
+				mainClick: async (data) => {
 					// Save the old query
 					var rxSpace = /\s+/g,
 						oldTagQuery = rxSpace.test(tag.name)
@@ -954,54 +889,41 @@ export default {
 							? `"#${data.newName}"`
 							: `#${data.newName}`;
 
-					// Send data
-					var newData = {
-						id: tag.id,
-						name: data.newName,
-					};
-
 					this.dialog.loading = true;
-					fetch(new URL("api/tags", document.baseURI), {
-						method: "PUT",
-						body: JSON.stringify(newData),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response.json();
-						})
-						.then(() => {
-							tag.name = data.newName;
+					try {
+						await apiRequest(
+							new URL("api/v1/tags/" + tag.id, document.baseURI),
+							{
+								method: "PUT",
+								body: JSON.stringify({ name: data.newName }),
+							},
+						);
 
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-							this.dialogTags.visible = true;
-							this.dialogTags.editMode = false;
-							this.tags.sort((a, b) => {
-								var aName = a.name.toLowerCase(),
-									bName = b.name.toLowerCase();
+						tag.name = data.newName;
 
-								if (aName < bName) return -1;
-								else if (aName > bName) return 1;
-								else return 0;
-							});
+						this.dialog.loading = false;
+						this.dialog.visible = false;
+						this.dialogTags.visible = true;
+						this.dialogTags.editMode = false;
+						this.tags.sort((a, b) => {
+							var aName = a.name.toLowerCase(),
+								bName = b.name.toLowerCase();
 
-							if (this.search.includes(oldTagQuery)) {
-								this.search = this.search.replace(oldTagQuery, newTagQuery);
-								this.loadData();
-							}
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.dialogTags.visible = false;
-							this.dialogTags.editMode = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+							if (aName < bName) return -1;
+							else if (aName > bName) return 1;
+							else return 0;
 						});
+
+						if (this.search.includes(oldTagQuery)) {
+							this.search = this.search.replace(oldTagQuery, newTagQuery);
+							this.loadData();
+						}
+					} catch (err) {
+						this.dialog.loading = false;
+						this.dialogTags.visible = false;
+						this.dialogTags.editMode = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -1033,6 +955,36 @@ export default {
 		var url = new Url();
 		this.search = url.query.search || "";
 		this.page = url.query.page || 1;
+
+		var isSharing =
+			url.query.url !== undefined || url.query.excerpt !== undefined;
+		if (isSharing) {
+			// this is what the spec says
+			var shareData = {
+				url: url.query.url,
+				excerpt: url.query.excerpt,
+				title: url.query.title,
+			};
+
+			// In my testing sharing from chrome and ff focus, this is how data arrives
+			if (shareData.url === undefined) {
+				shareData.url = url.query.excerpt;
+				shareData.title = url.query.title;
+				shareData.excerpt = "";
+			}
+
+			this.showDialogAdd(shareData);
+			var history = {
+				activePage: "page-home",
+				search: this.search,
+				page: this.page,
+			};
+
+			var url = new Url(document.baseURI);
+			url.hash = "home";
+			url.clearQuery();
+			window.history.replaceState(history, "page-home", url);
+		}
 
 		this.loadData(false, true);
 	},

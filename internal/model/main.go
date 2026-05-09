@@ -2,7 +2,7 @@ package model
 
 // Variables set my the main package coming from ldflags
 var (
-	BuildVersion = "1.7.4"
+	BuildVersion = "1.8.0"
 	BuildCommit  = "none"
 	BuildDate    = "unknown"
 )

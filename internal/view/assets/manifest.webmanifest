@@ -1,0 +1,48 @@
+{
+	"name": "栞",
+	"short_name": "Shiori",
+	"display": "standalone",
+	"description": "Shiori 是一个用 Go 语言编写的简单书签管理器。 旨在作为 Pocket 的简单克隆。 您可以将其用作命令行应用程序或 Web 应用程序。 此应用程序作为单个二进制文件分发，这意味着它可以轻松安装和使用。",
+	"icons": [
+		{
+			"src": "res/apple-touch-icon-144x144.png",
+			"type": "image/png",
+			"sizes": "144x144"
+		},
+		{
+			"src": "res/apple-touch-icon-152x152.png",
+			"type": "image/png",
+			"sizes": "152x152",
+			"purpose": "maskable"
+		},
+		{
+			"src": "res/pwa-192x192.png",
+			"type": "image/png",
+			"sizes": "192x192",
+			"purpose": "maskable"
+		},
+		{
+			"src": "res/pwa-512x512.png",
+			"type": "image/png",
+			"sizes": "512x512",
+			"purpose": "maskable"
+		},
+		{
+			"src": "res/pwa-1024x1024.png",
+			"type": "image/png",
+			"sizes": "1024x1024",
+			"purpose": "maskable"
+		}
+	],
+	"start_url": "../",
+	"share_target": {
+		"action": "../",
+		"enctype": "application/x-www-form-urlencoded",
+		"method": "GET",
+		"params": {
+			"title": "title",
+			"text": "excerpt",
+			"url": "url"
+		}
+	}
+}

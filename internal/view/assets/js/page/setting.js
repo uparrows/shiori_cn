@@ -48,11 +48,11 @@ var template = `
                 默认情况下公开书签
             </label>
         </details>
-        <details v-if="activeAccount.owner" open class="setting-group" id="setting-accounts">
+        <details v-if="activeAccount.owner" open class="setting-group setting-accounts" id="setting-accounts">
             <summary>账户</summary>
-            <ul>
+            <ul class="accounts-list">
                 <li v-if="accounts.length === 0">没有注册账户</li>
-                <li v-for="(account, idx) in accounts">
+                <li v-for="(account, idx) in accounts" :shiori-username="account.username">
                     <p>{{account.username}}
                         <span v-if="account.owner" class="account-level">(管理员)</span>
                     </p>
@@ -65,8 +65,24 @@ var template = `
                 </li>
             </ul>
             <div class="setting-group-footer">
-                <a @click="loadAccounts">刷新帐户列表</a>
-                <a v-if="activeAccount.owner" @click="showDialogNewAccount">添加新帐户</a>
+                <a @click="loadAccounts" title="Refresh accounts">刷新帐户列表</a>
+                <a v-if="activeAccount.owner" @click="showDialogNewAccount" title="Add new account">添加新帐户</a>
+            </div>
+        </details>
+        <details v-if="!activeAccount.owner" open class="setting-group setting-accounts" id="setting-my-account">
+            <summary>我的账户</summary>
+            <ul>
+                <li v-for="(account, idx) in [this.activeAccount]" :shiori-username="account.username">
+                    <p>{{account.username}}
+                        <span v-if="account.owner" class="account-level">(owner)</span>
+                    </p>
+                    <a title="修改密码" @click="showDialogChangePassword(account)">
+                        <i class="fa fas fa-fw fa-key"></i>
+                    </a>
+                </li>
+            </ul>
+            <div class="setting-group-footer">
+                <a @click="showDialogChangePassword(this.activeAccount)" title="Change password">修改密码</a>
             </div>
         </details>
 		<details v-if="activeAccount.owner" class="setting-group" id="setting-system-info">
@@ -76,7 +92,7 @@ var template = `
 				<li><b>数据库引擎:</b> <span>{{system.database}}</span></li>
 				<li><b>操作系统:</b> <span>{{system.os}}</span></li>
 			</ul>
-	</details>
+		</details>
         <details v-if="activeAccount.owner" open class="setting-group">
             <summary>关于</summary>
             <label>
@@ -93,6 +109,7 @@ var template = `
 
 import customDialog from "../component/dialog.js";
 import basePage from "./base.js";
+import { apiRequest } from "../utils/api.js";
 
 export default {
 	template: template,
@@ -144,7 +161,7 @@ export default {
 					return response.json();
 				})
 				.then((responseData) => {
-					const responseString = JSON.stringify(responseData.message);
+					const responseString = JSON.stringify(responseData);
 					localStorage.setItem("shiori-account", responseString);
 				})
 				.catch((err) => {
@@ -153,52 +170,32 @@ export default {
 					});
 				});
 		},
-		loadAccounts() {
+		async loadAccounts() {
 			if (this.loading) return;
 
 			this.loading = true;
-			fetch(new URL("api/accounts", document.baseURI), {
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-				},
-			})
-				.then((response) => {
-					if (!response.ok) throw response;
-					return response.json();
-				})
-				.then((json) => {
-					this.loading = false;
-					this.accounts = json;
-				})
-				.catch((err) => {
-					this.loading = false;
-					this.getErrorMessage(err).then((msg) => {
-						this.showErrorDialog(msg);
-					});
-				});
+			try {
+				const json = await apiRequest(
+					new URL("api/v1/accounts", document.baseURI),
+				);
+				this.loading = false;
+				this.accounts = json;
+			} catch (err) {
+				this.loading = false;
+				this.showErrorDialog(err.message);
+			}
 		},
-		loadSystemInfo() {
+		async loadSystemInfo() {
 			if (this.system.version !== undefined) return;
 
-			fetch(new URL("api/v1/system/info", document.baseURI), {
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-				},
-			})
-				.then((response) => {
-					if (!response.ok) throw response;
-					return response.json();
-				})
-				.then((json) => {
-					this.system = json.message;
-				})
-				.catch((err) => {
-					this.getErrorMessage(err).then((msg) => {
-						this.showErrorDialog(msg);
-					});
-				});
+			try {
+				const json = await apiRequest(
+					new URL("api/v1/system/info", document.baseURI),
+				);
+				this.system = json;
+			} catch (err) {
+				this.showErrorDialog(err.message);
+			}
 		},
 		showDialogNewAccount() {
 			this.showDialog({
@@ -217,159 +214,152 @@ export default {
 						value: "",
 					},
 					{
-						name: "repeat",
+						name: "repeat_password",
 						label: "重复密码",
 						type: "password",
 						value: "",
 					},
 					{
-						name: "visitor",
-						label: "此帐户供访客使用",
+						name: "admin",
+						label: "这是一个管理员帐户.",
 						type: "check",
 						value: false,
 					},
 				],
 				mainText: "确认",
 				secondText: "取消",
-				mainClick: (data) => {
+				mainClick: async (data) => {
 					if (data.username === "") {
-						this.showErrorDialog("用户名不能为空");
-						return;
-					}
-
-					if (data.password === "") {
-						this.showErrorDialog("密码不能为空");
-						return;
-					}
-
-					if (data.password !== data.repeat) {
-						this.showErrorDialog("密码不匹配");
 						return;
 					}
 
 					var request = {
 						username: data.username,
 						password: data.password,
-						owner: !data.visitor,
+						owner: data.admin,
 					};
 
 					this.dialog.loading = true;
-					fetch(new URL("api/accounts", document.baseURI), {
-						method: "post",
-						body: JSON.stringify(request),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response;
-						})
-						.then(() => {
-							this.dialog.loading = false;
-							this.dialog.visible = false;
+					try {
+						const json = await apiRequest(
+							new URL("api/v1/accounts", document.baseURI),
+							{
+								method: "post",
+								body: JSON.stringify(request),
+							},
+						);
 
-							this.accounts.push({
-								username: data.username,
-								owner: !data.visitor,
-							});
-							this.accounts.sort((a, b) => {
-								var nameA = a.username.toLowerCase(),
-									nameB = b.username.toLowerCase();
+						this.dialog.loading = false;
+						this.dialog.visible = false;
 
-								if (nameA < nameB) {
-									return -1;
-								}
+						this.accounts.push(json);
+						this.accounts.sort((a, b) => {
+							var nameA = a.username.toLowerCase(),
+								nameB = b.username.toLowerCase();
 
-								if (nameA > nameB) {
-									return 1;
-								}
+							if (nameA < nameB) {
+								return -1;
+							}
 
-								return 0;
-							});
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+							if (nameA > nameB) {
+								return 1;
+							}
+
+							return 0;
 						});
+					} catch (err) {
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
 		showDialogChangePassword(account) {
+			let fields = [
+				{
+					name: "new_password",
+					label: "新密码",
+					type: "password",
+					value: "",
+				},
+				{
+					name: "repeat_password",
+					label: "重复密码",
+					type: "password",
+					value: "",
+				},
+			];
+
+			const requiresOldPassword =
+				!this.activeAccount.owner || this.activeAccount.id === account.id;
+
+			// Only owners can update user passwords without
+			// providing the old password
+
+			if (requiresOldPassword) {
+				fields.unshift({
+					name: "old_password",
+					label: "当前密码",
+					type: "password",
+					value: "",
+				});
+			}
+
 			this.showDialog({
 				title: "更改密码",
-				content: "输入新密码 :",
-				fields: [
-					{
-						name: "oldPassword",
-						label: "旧密码",
-						type: "password",
-						value: "",
-					},
-					{
-						name: "password",
-						label: "新密码",
-						type: "password",
-						value: "",
-					},
-					{
-						name: "repeat",
-						label: "重复密码",
-						type: "password",
-						value: "",
-					},
-				],
+				content: "",
+				fields: fields,
 				mainText: "确认",
 				secondText: "取消",
-				mainClick: (data) => {
-					if (data.oldPassword === "") {
-						this.showErrorDialog("旧密码不能为空");
-						return;
+				mainClick: async (data) => {
+					if (requiresOldPassword) {
+						if (data.old_password === "") {
+							this.showErrorDialog("您必须提供当前密码.");
+							return;
+						}
 					}
 
-					if (data.password === "") {
+					if (data.new_password === "") {
 						this.showErrorDialog("新密码不能为空");
 						return;
 					}
 
-					if (data.password !== data.repeat) {
+					if (data.new_password !== data.repeat_password) {
 						this.showErrorDialog("密码不匹配");
 						return;
 					}
 
 					var request = {
-						username: account.username,
-						oldPassword: data.oldPassword,
-						newPassword: data.password,
-						owner: account.owner,
+						old_password: data.old_password,
+						new_password: data.new_password,
 					};
 
+					// Determine which URL to use depending if the user is updating its own
+					// account or another user's account.
+					let url = `api/v1/accounts/${account.id}`;
+					if (this.activeAccount.id === account.id) {
+						url = "api/v1/auth/account";
+					}
+
 					this.dialog.loading = true;
-					fetch(new URL("api/accounts", document.baseURI), {
-						method: "put",
-						body: JSON.stringify(request),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response;
-						})
-						.then(() => {
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+					try {
+						await apiRequest(new URL(url, document.baseURI), {
+							method: "PATCH",
+							body: JSON.stringify(request),
 						});
+
+						this.showDialog({
+							title: "密码已更改",
+							content: "密码已更改.",
+							mainText: "确认",
+							mainClick: () => {
+								this.dialog.visible = false;
+							},
+						});
+					} catch (err) {
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},
@@ -379,31 +369,20 @@ export default {
 				content: `删除帐户 "${account.username}" ?`,
 				mainText: "是",
 				secondText: "否",
-				mainClick: () => {
+				mainClick: async () => {
 					this.dialog.loading = true;
-					fetch(`api/accounts`, {
-						method: "delete",
-						body: JSON.stringify([account.username]),
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: "Bearer " + localStorage.getItem("shiori-token"),
-						},
-					})
-						.then((response) => {
-							if (!response.ok) throw response;
-							return response;
-						})
-						.then(() => {
-							this.dialog.loading = false;
-							this.dialog.visible = false;
-							this.accounts.splice(idx, 1);
-						})
-						.catch((err) => {
-							this.dialog.loading = false;
-							this.getErrorMessage(err).then((msg) => {
-								this.showErrorDialog(msg);
-							});
+					try {
+						await apiRequest(`api/v1/accounts/${account.id}`, {
+							method: "DELETE",
 						});
+
+						this.dialog.loading = false;
+						this.dialog.visible = false;
+						this.accounts.splice(idx, 1);
+					} catch (err) {
+						this.dialog.loading = false;
+						this.showErrorDialog(err.message);
+					}
 				},
 			});
 		},

@@ -6,13 +6,14 @@
 	<title>栞 - 书签管理器</title>
 
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
 	<link rel="apple-touch-icon-precomposed" sizes="152x152" href="assets/res/apple-touch-icon-152x152.png">
 	<link rel="apple-touch-icon-precomposed" sizes="144x144" href="assets/res/apple-touch-icon-144x144.png">
 	<link rel="icon" type="image/png" href="assets/res/favicon-32x32.png" sizes="32x32">
 	<link rel="icon" type="image/png" href="assets/res/favicon-16x16.png" sizes="16x16">
 	<link rel="icon" type="image/x-icon" href="assets/res/favicon.ico">
+	<link rel="manifest" href="assets/manifest.webmanifest" />
 
 	<link href="assets/css/style.css" rel="stylesheet">
 
@@ -93,7 +94,7 @@
 						secondText: "否",
 						mainClick: () => {
 							this.dialog.loading = true;
-							fetch(new URL("api/logout", document.baseURI), {
+							fetch(new URL("api/v1/auth/logout", document.baseURI), {
 								method: "post"
 							}).then(response => {
 								if (!response.ok) throw response;
@@ -159,18 +160,14 @@
 				},
 
 				onLoginSuccess() {
-					this.loadSetting();
 					this.loadAccount();
+					this.loadSetting();
 					this.isLoggedIn = true;
 				},
 
 				async validateSession() {
 					const token = localStorage.getItem("shiori-token");
 					const account = localStorage.getItem("shiori-account");
-
-					if (!(token && account)) {
-						return false;
-					}
 
 					try {
 						const response = await fetch(new URL("api/v1/auth/me", document.baseURI), {
@@ -183,6 +180,11 @@
 							throw new Error('Invalid session');
 						}
 
+						const responseJSON = await response.json();
+						localStorage.setItem(
+							"shiori-account",
+							JSON.stringify(responseJSON.message),
+						);
 						return true;
 					} catch (err) {
 						// Clear invalid session data

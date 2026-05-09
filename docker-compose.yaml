@@ -53,5 +53,15 @@ services:
     ports:
       - "3306:3306"
 
+  mysql:
+    image: mysql:8.0.40
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+      MYSQL_DATABASE: shiori
+      MYSQL_USER: shiori
+      MYSQL_PASSWORD: shiori
+    ports:
+      - "3307:3306"
+
 volumes:
   go-mod-cache:

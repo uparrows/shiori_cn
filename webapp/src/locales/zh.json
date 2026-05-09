@@ -1,0 +1,65 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "add": "添加",
+    "remove": "移除",
+    "close": "关闭"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "登出",
+    "username": "用户名",
+    "password": "密码",
+    "remember_me": "记住我",
+    "login_failed": "登录失败。请检查您的凭据."
+  },
+  "navigation": {
+    "home": "主页",
+    "archive": "归档",
+    "tags": "标签",
+    "folders": "文件夹",
+    "settings": "设置",
+    "about": "关于"
+  },
+  "bookmarks": {
+    "title": "书签",
+    "add_bookmark": "添加书签",
+    "edit_bookmark": "编辑书签",
+    "delete_bookmark": "删除书签",
+    "url": "链接",
+    "title": "标题",
+    "excerpt": "摘要",
+    "tags": "标签",
+    "add_tag": "添加标签",
+    "no_bookmarks": "未找到书签"
+  },
+  "tags": {
+    "title": "标签",
+    "add_tag": "添加标签",
+    "edit_tag": "修改标签",
+    "delete_tag": "删除标签",
+    "name": "名称",
+    "no_tags": "未找到标签"
+  },
+  "folders": {
+    "title": "文件夹",
+    "add_folder": "添加文件夹",
+    "edit_folder": "修改文件夹",
+    "delete_folder": "删除文件夹",
+    "name": "名称",
+    "no_folders": "未找到文件夹"
+  },
+  "settings": {
+    "title": "设置",
+    "language": "语言",
+    "theme": "主题",
+    "light": "浅色主题",
+    "dark": "深色主题",
+    "system": "跟随系统"
+  }
+}
