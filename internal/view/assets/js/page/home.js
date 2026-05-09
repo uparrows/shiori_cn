@@ -267,10 +267,32 @@ export default {
 			this.page = 1;
 			this.loadData();
 		},
-		changePage(page) {
-			this.page = page;
-			this.$refs.bookmarksGrid.scrollTop = 0;
-			this.loadData();
+	changePage(page) {
+		this.page = page;   
+		this.$nextTick(() => {
+        // 尝试多种滚动方式
+        const gridElement = this.$refs.bookmarksGrid; 
+        if (gridElement) {
+            // 滚动网格容器
+            gridElement.scrollTop = 0;            
+            // 同时滚动所有可能包含滚动条的父元素
+            let parent = gridElement.parentElement;
+            while (parent && parent !== document.body) {
+                if (parent.scrollTop !== undefined) {
+                    parent.scrollTop = 0;
+                }
+                parent = parent.parentElement;
+            }
+        }       
+        // 确保页面主容器也滚动到顶部
+        const mainScene = document.getElementById('main-scene');
+        if (mainScene && mainScene.scrollTop !== undefined) {
+            mainScene.scrollTop = 0;
+        }       
+        // 后备方案
+        window.scrollTo(0, 0);
+    });   
+    this.loadData();
 		},
 		toggleEditMode() {
 			this.selection = [];
