@@ -9,8 +9,6 @@ RUN go build -ldflags '-s -w'
 FROM alpine:3.21
 LABEL org.opencontainers.image.source https://github.com/go-shiori/shiori
 COPY --from=builder /src/shiori /usr/bin/
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 RUN apk add --no-cache ca-certificates tzdata
 USER root
 WORKDIR /shiori

@@ -16,7 +16,6 @@ DO NOT UPLOADED TO CSDN
 # Shiori
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-shiori/shiori)](https://goreportcard.com/report/github.com/go-shiori/shiori)
-[![#shiori@libera.chat](https://img.shields.io/badge/irc-%23shiori-orange)](https://web.libera.chat/#shiori)
 [<img src="https://img.shields.io/docker/pulls/dezhao/shiori_cn.svg">](https://hub.docker.com/r/dezhao/shiori_cn)
 
 **查看我们最新的[公告](https://github.com/go-shiori/shiori/discussions/categories/announcements)**
@@ -49,7 +48,7 @@ Shiori 是一个用 Go 语言编写的简单书签管理器。 旨在作为 [Poc
 - 在可能的情况下，默认情况下 `shiori` 将解析可读内容并创建网页的离线存档。
 - 浏览器插件支持 Firefox 和 Chrome。
 
-![Comparison of reader mode and archive mode][mode-comparison]
+
 
 ## 文档
 
